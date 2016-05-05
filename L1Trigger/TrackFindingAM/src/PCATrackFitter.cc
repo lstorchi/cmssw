@@ -28,19 +28,30 @@ namespace
     }
   }
 
-  bool hits_to_zrpmatrix_integer (
+  bool hits_to_zrpmatrix_integer (double ci, double si,
       const std::vector<Hit*> & hits, 
       pca::matrixpcaconst<int32_t> & zrv, 
       pca::matrixpcaconst<int32_t> & phirv, 
       std::string & layersid, 
-      std::string & pslayersid)
+      std::string & pslayersid,
+      int tow)
   {
     std::ostringstream osss, psosss;
     int counter = 0;
     for (unsigned int idx=0; idx<hits.size(); idx++) 
     {
+      //double xi = hits[idx]->getX();
+      //double yi = hits[idx]->getY();
+
       double xi = hits[idx]->getX();
       double yi = hits[idx]->getY();
+
+      if ((tow == 19) || (tow == 20) ||
+          (tow == 27) || (tow == 28))
+      {
+        xi = hits[idx]->getX() * ci - hits[idx]->getY() * si;
+        yi = hits[idx]->getX() * si + hits[idx]->getY() * ci;
+      }
 
       int32_t zi = (int32_t) hits[idx]->getZ();
       int32_t ri = (int32_t) sqrt(xi*xi+yi*yi);
@@ -74,7 +85,8 @@ namespace
       pca::matrixpcaconst<double> & zrv, 
       pca::matrixpcaconst<double> & phirv, 
       std::string & layersid, 
-      std::string & pslayersid)
+      std::string & pslayersid, 
+      int tow)
   {
     //std::vector<int> layerids;
     //std::vector<double> riv, piv, ziv;
@@ -83,12 +95,19 @@ namespace
     int counter = 0;
     for (unsigned int idx=0; idx<hits.size(); ++idx) 
     {
-      // TODO double check this
-      //double xi =  hits[idx]->getX()*ci+ hits[idx]->getY()*si;
-      //double yi = -hits[idx]->getX()*si+ hits[idx]->getY()*ci;
-
       double xi = hits[idx]->getX();
       double yi = hits[idx]->getY();
+ 
+      // TODO double check this
+      if ((tow == 19) || (tow == 20) ||
+          (tow == 27) || (tow == 28))
+      {
+        xi = hits[idx]->getX() * ci - hits[idx]->getY() * si;
+        yi = hits[idx]->getX() * si + hits[idx]->getY() * ci;
+      }
+
+      //double xi = hits[idx]->getX();
+      //double yi = hits[idx]->getY();
 
       double zi = hits[idx]->getZ();
       double ri = sqrt(xi*xi+yi*yi);
@@ -422,6 +441,8 @@ namespace
   
     return false;
   }
+
+
 }
 
 PCATrackFitter::PCATrackFitter():TrackFitter(0)
@@ -442,18 +463,16 @@ void PCATrackFitter::initialize()
 {
   pcacontvct_float_.clear();
   pcacontvct_integer_.clear();
-  chi2vf_.clear();
-  chi2vi_.clear();
+  cleanChi2();
   useinteger_ = false;
   track_ = NULL;
 }
 
-
-void PCATrackFitter::cleanChi2(){
+void PCATrackFitter::cleanChi2()
+{
   chi2vf_.clear();
   chi2vi_.clear();
 }
-
 
 void PCATrackFitter::mergePatterns()
 {
@@ -553,7 +572,7 @@ TrackFitter* PCATrackFitter::clone()
 
 void PCATrackFitter::read_float_const_filename (const std::string & in)
 {
-  //  std::cout << "Reading " << in << std::endl;
+  std::cout << "Reading " << in << std::endl;
   if (!pca::read_pcacosnt_from_file (pcacontvct_float_, in.c_str()))
   {
     std::cerr << "Error while reading constant from " << in << " read only " << 
@@ -571,13 +590,13 @@ void PCATrackFitter::read_float_const_filename (const std::string & in)
       return;
     }
   }
-  //  std::cout << "Done" << std::endl;
+  std::cout << "Done" << std::endl;
  
 }
 
 void PCATrackFitter::read_integegr_const_filename (const std::string & in)
 {
-  //  std::cout << "Reading " << in << std::endl;
+  std::cout << "Reading " << in << std::endl;
   if (!pca::read_pcacosnt_from_file (pcacontvct_integer_, in.c_str()))
   {
     std::cerr << "Error while reading constant from " << in << std::endl;
@@ -594,7 +613,7 @@ void PCATrackFitter::read_integegr_const_filename (const std::string & in)
       return;
     }
   }
-  //  std::cout << "Done" << std::endl;
+  std::cout << "Done" << std::endl;
 }
 
 void PCATrackFitter::fit_integer(vector<Hit*> hits)
@@ -607,20 +626,24 @@ void PCATrackFitter::fit_integer(vector<Hit*> hits)
 
   int tow = sector_id; 
 
+  double sec_phi = (tow%8) * M_PI / 4.0 - 0.4;
+  double ci = cos(-sec_phi);
+  double si = sin(-sec_phi);
+
   if (hits.size() == 6)
   {
     pca::matrixpcaconst<int32_t> zrv(1, 12), phirv(1, 12);
     std::string layersid, pslayersid;
 
-    if (hits_to_zrpmatrix_integer (hits, zrv, phirv, 
-          layersid, pslayersid))
+    if (hits_to_zrpmatrix_integer (ci, si, hits, zrv, phirv, 
+          layersid, pslayersid, tow))
     {
       int charge = +1;
-      if (track_->getCurve() < 0.0)
+      if (track_->getCharge() < 0.0)
        charge = -1;
 
       // Check the charge TODO
-      charge = -1 * charge;
+      //charge = -1 * charge;
 
       double pt_est = track_->getCurve();
       double eta_est = track_->getEta0();
@@ -663,6 +686,18 @@ void PCATrackFitter::fit_integer(vector<Hit*> hits)
       
         std::cout << "QVEC RPHI: " << std::endl;
         dump_element(qvec_rphi, std::cout);
+
+        std::cout << "AMTX RZ: " << std::endl;
+        dump_element(amtx_rz, std::cout);
+      
+        std::cout << "KVEC RZ: " << std::endl;
+        dump_element(kvec_rz, std::cout);
+      
+        std::cout << "AMTX RPHI: " << std::endl;
+        dump_element(amtx_rphi, std::cout);
+      
+        std::cout << "KVEC RPHI: " << std::endl;
+        dump_element(kvec_rphi, std::cout);
       }
       else 
       {
@@ -699,34 +734,9 @@ void PCATrackFitter::fit_float(vector<Hit*> hits)
   //std::cout << "PCA::fit tow: " << tow << " hits size: " << 
   //  hits.size() << std::endl;
   
-  double sec_phi = 0;
-  switch (tow%8)
-  {
-    case 0:
-      sec_phi = 0.4;
-      break;
-    case 1:
-      sec_phi = 1.2;
-      break;
-    case 3:
-      sec_phi = 2.0;
-      break;
-    case 4:
-      sec_phi = 2.7;
-      break;
-    case 5:
-      sec_phi = -2.0;
-      break;
-    case 6:
-      sec_phi = -1.2;
-      break;
-    case 7:
-      sec_phi = -0.4;
-      break;
-  }
-  
-  double ci = cos(sec_phi);
-  double si = sin(sec_phi);
+  double sec_phi = (tow%8) * M_PI / 4.0 - 0.4;
+  double ci = cos(-sec_phi);
+  double si = sin(-sec_phi);
 
   //std::cout << "tracks_.size() : " << tracks_.size() << std::endl;
   
@@ -738,26 +748,27 @@ void PCATrackFitter::fit_float(vector<Hit*> hits)
   rpzfile.open ("PCArphizfile.txt");
   */
 
+  int charge = +1; /* Try to use only + muons const */ 
+  if (track_->getCharge() < 0.0)
+    charge = -1;
+
+  std::cout << "Charge from TCB: " << track_->getCharge() << std::endl;
+
+  // Check the charge TODO
+  //charge = -1 * charge;
+
   if (hits.size() == 6)
   {
     pca::matrixpcaconst<double> zrv(1, 12), phirv(1, 12);
     std::string layersid, pslayersid;
 
     if (hits_to_zrpmatrix (ci, si, hits, zrv, phirv, 
-          layersid, pslayersid))
+          layersid, pslayersid, tow))
     {
-      int charge = +1;
-      double pt_est, eta_est;
-      if (track_->getCurve() < 0.0)
-       charge = -1;
-
-      // Check the charge TODO
-      charge = -1 * charge;
-
-      pt_est = track_->getCurve();
-      eta_est = track_->getEta0();
-      //      z0_est = track_->getZ0();
-      // phi_est = track_->getPhi0();
+      double pt_est = track_->getCurve();
+      double eta_est = track_->getEta0();
+      double z0_est = track_->getZ0();
+      double phi_est = track_->getPhi0();
       
       /* TEST 
       zrv(0, 0) = -16.1314; zrv(0, 1) = 23.3135;
@@ -837,7 +848,11 @@ void PCATrackFitter::fit_float(vector<Hit*> hits)
           coverpt += cmtx_rphi(0, i) * phirv(0, i);
           phi += cmtx_rphi(1, i) * phirv(0, i);
         }
-        
+
+        if ((tow == 19) || (tow == 20) ||
+            (tow == 27) || (tow == 28))
+          phi -= sec_phi;
+
         double pt = (double)(charge)/coverpt;
         
         // TODO: checkit theta to eta 
@@ -876,14 +891,15 @@ void PCATrackFitter::fit_float(vector<Hit*> hits)
           
           chi2rphi += val*val;
         }
-	/*        
+        
         std::cout << " 6oof6 pt:      " << pt << " " << pt_est << std::endl;
         std::cout << " 6oof6 phi:     " << phi << " " << phi_est << std::endl; 
         std::cout << " 6oof6 eta:     " << eta << " " << eta_est << std::endl;
         std::cout << " 6oof6 z0:      " << z0 << " " << z0_est << std::endl;
         std::cout << " 6oof6 chirz:   " << chi2rz << std::endl;
         std::cout << " 6oof6 chirphi: " << chi2rphi << std::endl;
-	*/
+        std::cout << " 6oof6 chi2:    " << (chi2rz+chi2rphi)/14.0 << std::endl;
+
         Track* fit_track = new Track();
         
         fit_track->setCurve(pt);
@@ -894,7 +910,8 @@ void PCATrackFitter::fit_float(vector<Hit*> hits)
         for(unsigned int idx = 0; idx < hits.size(); ++idx)
           fit_track->addStubIndex(hits[idx]->getID());
         
-        chi2vf_.push_back(chi2rz+chi2rphi);
+        // TODO: check NDF (14)
+        chi2vf_.push_back((chi2rz+chi2rphi)/14.0);
         tracks.push_back(fit_track);
       }
       else 
@@ -914,20 +931,12 @@ void PCATrackFitter::fit_float(vector<Hit*> hits)
     std::string layersid, pslayersid;
 
     if (hits_to_zrpmatrix (ci, si, hits, zrv, phirv, 
-          layersid, pslayersid))
+          layersid, pslayersid, tow))
     {
-      int charge = +1;
-      double pt_est, eta_est;
-      if (track_->getCurve() < 0.0)
-       charge = -1;
-
-      // Check the charge TODO
-      charge = -1 * charge;
-
-      pt_est = track_->getCurve();
-      eta_est = track_->getEta0();
-      // z0_est = track_->getZ0();
-      // phi_est = track_->getPhi0();
+      double pt_est = track_->getCurve();
+      double eta_est = track_->getEta0();
+      double z0_est = track_->getZ0();
+      double phi_est = track_->getPhi0();
       
       pca::matrixpcaconst<double> cmtx_rz(0, 0);
       pca::matrixpcaconst<double> qvec_rz(0, 0); 
@@ -975,6 +984,12 @@ void PCATrackFitter::fit_float(vector<Hit*> hits)
           coverpt += cmtx_rphi(0, i) * phirv(0, i);
           phi += cmtx_rphi(1, i) * phirv(0, i);
         }
+
+        if ((tow == 19) || (tow == 20) ||
+            (tow == 27) || (tow == 28))
+          phi -= sec_phi;
+
+        phi = fmod(phi + M_PI, 2 * M_PI) - M_PI;
         
         double pt = (double)(charge)/coverpt;
         
@@ -1014,14 +1029,15 @@ void PCATrackFitter::fit_float(vector<Hit*> hits)
           
           chi2rphi += val*val;
         }
-        /*
+        
         std::cout << " 5oof6 pt:      " << pt << " " << pt_est << std::endl;
         std::cout << " 5oof6 phi:     " << phi << " " << phi_est << std::endl; 
         std::cout << " 5oof6 eta:     " << eta << " " << eta_est << std::endl;
         std::cout << " 5oof6 z0:      " << z0 << " " << z0_est << std::endl;
         std::cout << " 5oof6 chirz:   " << chi2rz << std::endl;
         std::cout << " 5oof6 chirphi: " << chi2rphi << std::endl;
-	*/
+        std::cout << " 6oof6 chi2:    " << (chi2rz+chi2rphi)/10.0 << std::endl;
+
         Track* fit_track = new Track();
         
         fit_track->setCurve(pt);
@@ -1033,7 +1049,8 @@ void PCATrackFitter::fit_float(vector<Hit*> hits)
           fit_track->addStubIndex(hits[idx]->getID());
         
         tracks.push_back(fit_track);
-        chi2vf_.push_back(chi2rz+chi2rphi);
+        // TODO: check NDF (10)
+        chi2vf_.push_back((chi2rz+chi2rphi)/(10.0));
       }
       else 
       {

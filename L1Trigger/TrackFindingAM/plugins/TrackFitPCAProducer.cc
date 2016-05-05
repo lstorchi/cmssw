@@ -154,22 +154,22 @@ void TrackFitPCAProducer::produce( edm::Event& iEvent, const edm::EventSetup& iS
 
   /// STEP 0
   /// Read PCAConst file
-  PCA->read_float_const_filename ("barrel_tow16_pca_const.txt");
-  PCA->read_float_const_filename ("barrel_tow17_pca_const.txt");
-  PCA->read_float_const_filename ("barrel_tow18_pca_const.txt");
-  PCA->read_float_const_filename ("barrel_tow19_pca_const.txt");
-  PCA->read_float_const_filename ("barrel_tow20_pca_const.txt");
-  PCA->read_float_const_filename ("barrel_tow21_pca_const.txt");
-  PCA->read_float_const_filename ("barrel_tow22_pca_const.txt");
-  PCA->read_float_const_filename ("barrel_tow23_pca_const.txt");
-  PCA->read_float_const_filename ("barrel_tow24_pca_const.txt");
-  PCA->read_float_const_filename ("barrel_tow25_pca_const.txt");
-  PCA->read_float_const_filename ("barrel_tow26_pca_const.txt");
-  PCA->read_float_const_filename ("barrel_tow27_pca_const.txt");
-  PCA->read_float_const_filename ("barrel_tow28_pca_const.txt");
-  PCA->read_float_const_filename ("barrel_tow29_pca_const.txt");
-  PCA->read_float_const_filename ("barrel_tow30_pca_const.txt");
-  PCA->read_float_const_filename ("barrel_tow31_pca_const.txt");
+  PCA->read_float_const_filename ("../data/barrel_tow16_pca_const.txt");
+  PCA->read_float_const_filename ("../data/barrel_tow17_pca_const.txt");
+  PCA->read_float_const_filename ("../data/barrel_tow18_pca_const.txt");
+  PCA->read_float_const_filename ("../data/barrel_tow19_pca_const.txt");
+  PCA->read_float_const_filename ("../data/barrel_tow20_pca_const.txt");
+  PCA->read_float_const_filename ("../data/barrel_tow21_pca_const.txt");
+  PCA->read_float_const_filename ("../data/barrel_tow22_pca_const.txt");
+  PCA->read_float_const_filename ("../data/barrel_tow23_pca_const.txt");
+  PCA->read_float_const_filename ("../data/barrel_tow24_pca_const.txt");
+  PCA->read_float_const_filename ("../data/barrel_tow25_pca_const.txt");
+  PCA->read_float_const_filename ("../data/barrel_tow26_pca_const.txt");
+  PCA->read_float_const_filename ("../data/barrel_tow27_pca_const.txt");
+  PCA->read_float_const_filename ("../data/barrel_tow28_pca_const.txt");
+  PCA->read_float_const_filename ("../data/barrel_tow29_pca_const.txt");
+  PCA->read_float_const_filename ("../data/barrel_tow30_pca_const.txt");
+  PCA->read_float_const_filename ("../data/barrel_tow31_pca_const.txt");
 
   /// STEP 1
   /// Loop over track candidates
@@ -210,7 +210,12 @@ void TrackFitPCAProducer::produce( edm::Event& iEvent, const edm::EventSetup& iS
       unsigned int seedSector = tempTrackPtr->getSector();
 
       Track* TC = new Track();
-      TC->setCharge(tempTrackPtr->getWedge());
+      // TODO getWedge is unsigned ???
+      if (tempTrackPtr->getWedge() == 1)
+        TC->setCharge(-1.0);
+      else
+        TC->setCharge(+1.0);
+      //std::cout << "Wedge: " << tempTrackPtr->getWedge() << std::endl;
       TC->setCurve(tempTrackPtr->getMomentum(5).perp());
       TC->setEta0(tempTrackPtr->getMomentum(5).eta());
       TC->setPhi0(tempTrackPtr->getMomentum(5).phi());
