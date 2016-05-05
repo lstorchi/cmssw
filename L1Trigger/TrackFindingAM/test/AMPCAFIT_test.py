@@ -85,7 +85,7 @@ process.RAWSIMoutput.outputCommands.append('drop *_TTTracksINFNFromTC_*_*')
 process.RAWSIMoutput.outputCommands.append('keep  *_*_MergedTrackTruth_*')
 
 # Path and EndPath definitions
-process.L1AMPCAFIT_step         = cms.Path(process.TTTracksINFNFFromTCswStubs)
+process.L1AMPCAFIT_step         = cms.Path(process.TTTracksINFNFromTCswStubs)
 process.endjob_step          = cms.EndPath(process.endOfProcess)
 process.RAWSIMoutput_step    = cms.EndPath(process.RAWSIMoutput)
 
